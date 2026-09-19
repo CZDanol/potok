@@ -14,11 +14,10 @@ public class Dynex<T>
         _evalFunc = evalFunc;
     }
 
-    public T? Eval()
+    public T Eval()
     {
         Recompute();
-        Debug.Assert(_isDirty == false);
-        return _cachedValue;
+        return _cachedValue!;
     }
 
     void Recompute()
