@@ -1,6 +1,7 @@
 ﻿namespace Majex.Potok.Core.Tests;
 
 using Majex.Potok.Core.Dynex;
+using Majex.Potok.Core.Dynex.RebindableDynex;
 
 public class BasicTests
 {
@@ -8,12 +9,11 @@ public class BasicTests
     public void Sum()
     {
         var a = new Dynex<float>(() => 3);
-        Assert.Equal(3, a.Eval());
-
         var b = new Dynex<float>(() => 4);
-        Assert.Equal(4, b.Eval());
-
         var sum = new Dynex<float>(() => a.Eval() + b.Eval());
+
+        Assert.Equal(3, a.Eval());
+        Assert.Equal(4, b.Eval());
         Assert.Equal(7, sum.Eval());
     }
 
@@ -21,12 +21,26 @@ public class BasicTests
     public void NullSum()
     {
         var a = new Dynex<float?>(() => 3);
-        Assert.Equal(3, a.Eval());
-
         var b = new Dynex<float?>(() => null);
-        Assert.Null(b.Eval());
-
         var sum = new Dynex<float?>(() => a.Eval() + b.Eval());
+
+        Assert.Null(b.Eval());
         Assert.Null(sum.Eval());
+    }
+
+    [Fact]
+    public void RebindTest()
+    {
+        var a = new Dynex<float?>(() => 2);
+        var b = new Dynex<float?>(() => 2);
+
+        var sum = new RebindableDynex<float?>();
+        Assert.Null(sum.Eval());
+
+        sum.Rebind(3);
+        Assert.Equal(3, sum.Eval());
+
+        sum.Rebind(() => a.Eval() + b.Eval());
+        Assert.Equal(4, sum.Eval());
     }
 }

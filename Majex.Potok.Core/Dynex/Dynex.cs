@@ -6,18 +6,18 @@ namespace Majex.Potok.Core.Dynex;
 public class Dynex<T>
 {
     protected Func<T> _evalFunc;
+    protected bool _isDirty = true;
     private T? _cachedValue;
-    private bool _isDirty = true;
 
     public Dynex(Func<T> evalFunc)
     {
         _evalFunc = evalFunc;
     }
 
-    public T Eval()
+    public T? Eval()
     {
         Recompute();
-        return _cachedValue!;
+        return _cachedValue;
     }
 
     void Recompute()
@@ -32,3 +32,4 @@ public class Dynex<T>
     }
 
 }
+
