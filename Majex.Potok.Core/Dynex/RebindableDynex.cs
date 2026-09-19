@@ -9,15 +9,19 @@ public class RebindableDynex<T> : Dynex<T?>
 
     }
 
-    public void Rebind(Func<T> evalFunc)
+    public RebindableDynex(T value) : base(() => value)
     {
-        if (_evalFunc == evalFunc)
-        {
-            return;
-        }
 
-        _evalFunc = evalFunc;
-        _isDirty = true;
+    }
+
+    public RebindableDynex(Func<T> evalFunc) : base(evalFunc)
+    {
+
+    }
+
+    new public void Rebind(Func<T> evalFunc)
+    {
+        base.Rebind(evalFunc);
     }
 
     public void Rebind(T value)

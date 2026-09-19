@@ -43,4 +43,16 @@ public class BasicTests
         sum.Rebind(() => a.Eval() + b.Eval());
         Assert.Equal(4, sum.Eval());
     }
+
+    [Fact]
+    public void RebindUpdateTest()
+    {
+        var a = new RebindableDynex<float?>(3);
+        var b = new RebindableDynex<float?>(4);
+        var sum = new Dynex<float?>(() => a.Eval() + b.Eval());
+
+        Assert.Equal(7, sum.Eval());
+        b.Rebind(8);
+        Assert.Equal(11, sum.Eval());
+    }
 }
