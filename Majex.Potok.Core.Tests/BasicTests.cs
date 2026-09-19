@@ -58,4 +58,30 @@ public class BasicTests
         b.Rebind(8);
         Assert.Equal(11, sum.Eval());
     }
+
+    [Fact]
+    public void LazyUpdates()
+    {
+        var debugger = new DynexDebugger();
+        IDynexDebugger.Instance.Value = debugger;
+
+        var root = Identifier.Root;
+        var a = new RebindableDynex<float?>(root / "a", 3);
+        var b = new Dynex<float?>(root / "b", () =>
+        {
+            a.Eval();
+            return 5;
+        });
+        var c = new Dynex<float?>(root / "c", () => b.Eval());
+
+        Assert.Equal([], debugger.RecomputeLog);
+
+        Assert.Equal(5, c.Eval());
+        Assert.Equal([a, b, c], debugger.RecomputeLog);
+        debugger.RecomputeLog.Clear();
+
+        a.Rebind(1);
+        Assert.Equal(5, c.Eval());
+        Assert.Equal([a, b], debugger.RecomputeLog);
+    }
 }

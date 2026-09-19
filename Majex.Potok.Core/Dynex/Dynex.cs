@@ -114,6 +114,10 @@ public class Dynex<T> : BaseDynex
 
         _isDirty = false;
 
+#if DEBUG
+        IDynexDebugger.Instance.Value?.OnRecompute(this);
+#endif
+
         if (!EqualityComparer<T>.Default.Equals(prevValue, _cachedValue))
         {
             InvalidateDependencies();
