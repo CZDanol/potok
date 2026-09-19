@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Majex.Potok.Core.Tests/Majex.Potok.Core.Tests.csproj" />
+  <Project Path="Majex.Potok.Core/Majex.Potok.Core.csproj" />
+</Solution>
