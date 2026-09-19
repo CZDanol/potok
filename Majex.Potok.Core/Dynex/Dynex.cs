@@ -1,19 +1,21 @@
-using System.Reflection;
-using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Runtime.Serialization;
-
-namespace Majex.Potok.Core.Dynex;
+namespace Majex.Potok.Core;
 
 public class BaseDynex
 {
     static protected readonly ThreadLocal<BaseDynex?> _dynexBeingRecomputed = new();
+
+    protected readonly Identifier _id;
 
     protected HashSet<BaseDynex> _dependants = new();
 
     protected HashSet<BaseDynex> _dependencies = new();
 
     protected bool _isDirty = true;
+
+    protected BaseDynex(Identifier id)
+    {
+        _id = id;
+    }
 
     protected void ReportDepency()
     {
@@ -52,6 +54,11 @@ public class BaseDynex
             dep.Invalidate();
         }
     }
+
+    public override string ToString()
+    {
+        return _id.ToString();
+    }
 }
 
 public class Dynex<T> : BaseDynex
@@ -61,7 +68,7 @@ public class Dynex<T> : BaseDynex
     T? _cachedValue;
 
 
-    public Dynex(Func<T> evalFunc)
+    public Dynex(Identifier id, Func<T> evalFunc) : base(id)
     {
         _evalFunc = evalFunc;
     }

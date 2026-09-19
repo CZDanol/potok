@@ -1,20 +1,18 @@
-using Majex.Potok.Core.Dynex;
-
-namespace Majex.Potok.Core.Dynex.RebindableDynex;
+namespace Majex.Potok.Core;
 
 public class RebindableDynex<T> : Dynex<T?>
 {
-    public RebindableDynex() : base(() => default)
+    public RebindableDynex(Identifier id) : base(id, () => default)
     {
 
     }
 
-    public RebindableDynex(T value) : base(() => value)
+    public RebindableDynex(Identifier id, T value) : base(id, () => value)
     {
 
     }
 
-    public RebindableDynex(Func<T> evalFunc) : base(evalFunc)
+    public RebindableDynex(Identifier id, Func<T> evalFunc) : base(id, evalFunc)
     {
 
     }
