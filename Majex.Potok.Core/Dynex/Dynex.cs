@@ -1,5 +1,10 @@
 namespace Majex.Potok.Core;
 
+public class NoValueException(BaseDynex? offender) : Exception
+{
+    public BaseDynex? Offender = offender;
+}
+
 public class BaseDynex
 {
     static protected readonly ThreadLocal<BaseDynex?> _dynexBeingRecomputed = new();
@@ -65,7 +70,9 @@ public class Dynex<T> : BaseDynex
 {
     Func<T> _evalFunc;
 
-    T? _cachedValue;
+    T _cachedValue = default!;
+
+    bool _hasValue = false;
 
 
     public Dynex(Identifier id, Func<T> evalFunc) : base(id)
@@ -73,11 +80,30 @@ public class Dynex<T> : BaseDynex
         _evalFunc = evalFunc;
     }
 
-    public T? Eval()
+    public bool TryEval(out T value)
     {
         ReportDepency();
         Recompute();
-        return _cachedValue;
+        if (_hasValue)
+        {
+            value = _cachedValue;
+            return true;
+        }
+        else
+        {
+            value = default!;
+            return false;
+        }
+
+    }
+
+    public T Eval()
+    {
+        if (!TryEval(out var result))
+        {
+            throw new NoValueException(this);
+        }
+        return result;
     }
 
     protected void Rebind(Func<T> evalFunc)
@@ -102,10 +128,16 @@ public class Dynex<T> : BaseDynex
         ClearDependencies();
 
         var prevRecomputed = _dynexBeingRecomputed.Value;
-        _dynexBeingRecomputed.Value = this;
         try
         {
+            _dynexBeingRecomputed.Value = this;
+            _hasValue = false;
             _cachedValue = _evalFunc();
+            _hasValue = true;
+        }
+        catch (NoValueException)
+        {
+            // _hasValue stays false
         }
         finally
         {

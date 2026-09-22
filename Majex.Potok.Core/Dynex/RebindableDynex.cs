@@ -1,8 +1,8 @@
 namespace Majex.Potok.Core;
 
-public class RebindableDynex<T> : Dynex<T?>
+public class RebindableDynex<T> : Dynex<T>
 {
-    public RebindableDynex(Identifier id) : base(id, () => default)
+    public RebindableDynex(Identifier id) : base(id, () => throw new NoValueException(null))
     {
 
     }

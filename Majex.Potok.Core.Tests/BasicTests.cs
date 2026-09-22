@@ -22,23 +22,24 @@ public class BasicTests
     public void NullSum()
     {
         var root = Identifier.Root;
-        var a = new Dynex<float?>(root / "a", () => 3);
-        var b = new Dynex<float?>(root / "b", () => null);
-        var sum = new Dynex<float?>(root / "sum", () => a.Eval() + b.Eval());
+        var a = new Dynex<float>(root / "a", () => 3);
+        var b = new Dynex<float>(root / "b", () => throw new NoValueException(null));
+        var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
 
-        Assert.Null(b.Eval());
-        Assert.Null(sum.Eval());
+        Assert.False(b.TryEval(out var _));
+        Assert.False(sum.TryEval(out var _));
+        Assert.Throws<NoValueException>(() => sum.Eval());
     }
 
     [Fact]
     public void RebindTest()
     {
         var root = Identifier.Root;
-        var a = new Dynex<float?>(root / "a", () => 2);
-        var b = new Dynex<float?>(root / "b", () => 2);
+        var a = new Dynex<float>(root / "a", () => 2);
+        var b = new Dynex<float>(root / "b", () => 2);
 
-        var sum = new RebindableDynex<float?>(root / "sum");
-        Assert.Null(sum.Eval());
+        var sum = new RebindableDynex<float>(root / "sum");
+        Assert.Throws<NoValueException>(() => sum.Eval());
 
         sum.Rebind(3);
         Assert.Equal(3, sum.Eval());
@@ -51,9 +52,9 @@ public class BasicTests
     public void RebindUpdateTest()
     {
         var root = Identifier.Root;
-        var a = new RebindableDynex<float?>(root / "a", 3);
-        var b = new RebindableDynex<float?>(root / "b", 4);
-        var sum = new Dynex<float?>(root / "sum", () => a.Eval() + b.Eval());
+        var a = new RebindableDynex<float>(root / "a", 3);
+        var b = new RebindableDynex<float>(root / "b", 4);
+        var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
 
         Assert.Equal(7, sum.Eval());
         b.Rebind(8);
@@ -64,10 +65,10 @@ public class BasicTests
     public void Nullable()
     {
         var root = Identifier.Root;
-        var a = new Dynex<float?>(root / "a", () => null);
-        var b = new Dynex<float?>(root / "b", () => null);
-        var lt = new Dynex<bool?>(root / "lt", () => a.Eval() < b.Eval());
-        Assert.Null(lt);
+        var a = new Dynex<float>(root / "a", () => throw new NoValueException(null));
+        var b = new Dynex<float>(root / "b", () => throw new NoValueException(null));
+        var lt = new Dynex<bool>(root / "lt", () => a.Eval() < b.Eval());
+        Assert.False(lt.TryEval(out var _));
     }
 
     [Fact]
@@ -77,13 +78,13 @@ public class BasicTests
         IDynexDebugger.Instance.Value = debugger;
 
         var root = Identifier.Root;
-        var a = new RebindableDynex<float?>(root / "a", 3);
-        var b = new Dynex<float?>(root / "b", () =>
+        var a = new RebindableDynex<float>(root / "a", 3);
+        var b = new Dynex<float>(root / "b", () =>
         {
             a.Eval();
             return 5;
         });
-        var c = new Dynex<float?>(root / "c", () => b.Eval());
+        var c = new Dynex<float>(root / "c", () => b.Eval());
 
         Assert.Equal([], debugger.RecomputeLog);
 
