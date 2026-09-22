@@ -1,6 +1,7 @@
 ﻿namespace Majex.Potok.Core.Tests;
 
 using Majex.Potok.Core;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 public class BasicTests
 {
@@ -57,6 +58,16 @@ public class BasicTests
         Assert.Equal(7, sum.Eval());
         b.Rebind(8);
         Assert.Equal(11, sum.Eval());
+    }
+
+    [Fact]
+    public void Nullable()
+    {
+        var root = Identifier.Root;
+        var a = new Dynex<float?>(root / "a", () => null);
+        var b = new Dynex<float?>(root / "b", () => null);
+        var lt = new Dynex<bool?>(root / "lt", () => a.Eval() < b.Eval());
+        Assert.Null(lt);
     }
 
     [Fact]
