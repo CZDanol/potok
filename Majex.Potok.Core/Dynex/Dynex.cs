@@ -13,10 +13,22 @@ public class BaseDynex
 
     protected readonly Identifier _id;
 
+    /// <summary>
+    /// Dynexes that depend on this one.
+    /// When this dynex changes value/state,
+    /// they need to be invalidated.
+    /// </summary>
     protected List<DynexDependencyToken> _dependants = new();
 
+    /// <summary>
+    /// When _dependants grow to this size,
+    /// do a sweep that removes null values.
+    /// </summary>
     private int _dependantsSweepOn = 16;
 
+    /// <summary>
+    /// True if the dynex is not up-to-date and needs recomputation.
+    /// </summary>
     protected bool _isDirty = true;
 
     /// <summary>
@@ -37,6 +49,14 @@ public class BaseDynex
         _dependencyToken = new DynexDependencyToken(this);
     }
 
+    /// <summary>
+    /// Marks a dynex that is currently being recomputed (if any)
+    /// as dependent on this one.
+    /// </summary>
+    /// <remarks>
+    /// To be called only in TryEval.
+    /// Used for detecting nested Eval() calls within the dynex evalFunc.
+    /// </remarks>
     protected void ReportDependency()
     {
         var dependant = _dynexBeingRecomputed.Value;
@@ -64,6 +84,10 @@ public class BaseDynex
         InvalidateDependants();
     }
 
+    /// <summary>
+    /// Removes null references from the _dependants list to shrink its size.
+    /// </summary>
+    /// <param name="invalidate">If true, also invalidates all dependants.</param>
     protected void SweepDependants(bool invalidate)
     {
         // Go through all the dependencies and remove all that are not valid anymore
@@ -99,19 +123,21 @@ public class BaseDynex
     }
 }
 
-public class Dynex<T> : BaseDynex
+public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 {
-    Func<T> _evalFunc;
+    Func<T> _evalFunc = evalFunc;
 
     T _cachedValue = default!;
 
+    /// <summary>
+    /// Provided that !_isDirty, denotes whether _cachedValue is a valid value.
+    /// </summary>
+    /// <remarks>
+    /// Used to denote situations where the value cannot be provided.
+    /// Akin to null, but nullables don't play well with generics
+    /// (and expression evaluation in general).
+    /// </remarks>
     bool _hasValue = false;
-
-
-    public Dynex(Identifier id, Func<T> evalFunc) : base(id)
-    {
-        _evalFunc = evalFunc;
-    }
 
     public bool TryEval(out T value)
     {
@@ -139,6 +165,9 @@ public class Dynex<T> : BaseDynex
         return result;
     }
 
+    /// <remarks>
+    /// MUST stay private. Use RebindableDynex if you want rebinding.
+    /// </remarks>
     protected void Rebind(Func<T> evalFunc)
     {
         if (_evalFunc == evalFunc)
@@ -150,6 +179,9 @@ public class Dynex<T> : BaseDynex
         Invalidate();
     }
 
+    /// <summary>
+    /// Ensures that the value is not dirty.
+    /// </summary>
     void Recompute()
     {
         if (!_isDirty)
