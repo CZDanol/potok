@@ -1,5 +1,7 @@
 namespace Majex.Potok.Core;
 
+using DynexDependencyToken = WeakReference<BaseDynex?>;
+
 public class NoValueException(BaseDynex? offender) : Exception
 {
     public BaseDynex? Offender = offender;
@@ -7,38 +9,48 @@ public class NoValueException(BaseDynex? offender) : Exception
 
 public class BaseDynex
 {
-    static protected readonly ThreadLocal<BaseDynex?> _dynexBeingRecomputed = new();
+    static protected readonly ThreadLocal<DynexDependencyToken?> _dynexBeingRecomputed = new();
 
     protected readonly Identifier _id;
 
-    protected HashSet<BaseDynex> _dependants = new();
+    protected List<DynexDependencyToken> _dependants = new();
 
-    protected HashSet<BaseDynex> _dependencies = new();
+    private int _dependantsSweepOn = 16;
 
     protected bool _isDirty = true;
+
+    /// <summary>
+    /// Weak reference to the current state of this dynex.
+    /// </summary>
+    /// <remarks>
+    /// When the state changes (before every recompute),
+    /// it gets invalidated and a new token is generated.
+    /// 
+    /// Dependency tracking MUST be realized through this token,
+    /// otherwise things will break.
+    /// </remarks>
+    protected DynexDependencyToken _dependencyToken;
 
     protected BaseDynex(Identifier id)
     {
         _id = id;
+        _dependencyToken = new DynexDependencyToken(this);
     }
 
-    protected void ReportDepency()
+    protected void ReportDependency()
     {
         var dependant = _dynexBeingRecomputed.Value;
-        if (dependant != null)
+        if (dependant == null)
         {
-            _dependants.Add(dependant);
-            dependant._dependencies.Add(this);
+            return;
         }
-    }
 
-    protected void ClearDependencies()
-    {
-        foreach (var dependency in _dependencies)
+        if (_dependants.Count >= _dependantsSweepOn)
         {
-            dependency._dependants.Remove(this);
+            SweepDependants(false);
         }
-        _dependencies.Clear();
+
+        _dependants.Add(dependant);
     }
 
     protected void Invalidate()
@@ -49,15 +61,36 @@ public class BaseDynex
         }
 
         _isDirty = true;
-        InvalidateDependencies();
+        InvalidateDependants();
     }
 
-    protected void InvalidateDependencies()
+    protected void SweepDependants(bool invalidate)
     {
-        foreach (var dep in _dependants)
+        // Go through all the dependencies and remove all that are not valid anymore
+        // Not valid = either collected by the GC or invalidated bcs of Recompute
+        int validCount = _dependants.Count;
+        int i = 0;
+        while (i < validCount)
         {
-            dep.Invalidate();
+            if (!_dependants[i].TryGetTarget(out var dependant))
+            {
+                // Swap remove
+                _dependants[i] = _dependants[validCount - 1];
+                validCount--;
+            }
+            else if (invalidate)
+            {
+                dependant.Invalidate();
+                i++;
+            }
         }
+        _dependants.RemoveRange(validCount, _dependants.Count - validCount);
+        _dependantsSweepOn = Math.Max((int)(_dependants.Count * 1.5), 16);
+    }
+
+    protected void InvalidateDependants()
+    {
+        SweepDependants(true);
     }
 
     public override string ToString()
@@ -82,7 +115,7 @@ public class Dynex<T> : BaseDynex
 
     public bool TryEval(out T value)
     {
-        ReportDepency();
+        ReportDependency();
         Recompute();
         if (_hasValue)
         {
@@ -125,12 +158,13 @@ public class Dynex<T> : BaseDynex
         }
 
         var prevValue = _cachedValue;
-        ClearDependencies();
-
         var prevRecomputed = _dynexBeingRecomputed.Value;
         try
         {
-            _dynexBeingRecomputed.Value = this;
+            // Invalidate the old token and issue a new one
+            _dependencyToken.SetTarget(null);
+            _dependencyToken = new DynexDependencyToken(this);
+            _dynexBeingRecomputed.Value = _dependencyToken;
             _hasValue = false;
             _cachedValue = _evalFunc();
             _hasValue = true;
@@ -152,7 +186,7 @@ public class Dynex<T> : BaseDynex
 
         if (!EqualityComparer<T>.Default.Equals(prevValue, _cachedValue))
         {
-            InvalidateDependencies();
+            InvalidateDependants();
         }
     }
 }
