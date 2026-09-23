@@ -23,12 +23,12 @@ public class BasicTests
     {
         var root = Identifier.Root;
         var a = new Dynex<float>(root / "a", () => 3);
-        var b = new Dynex<float>(root / "b", () => throw new NoValueException(null));
+        var b = new Dynex<float>(root / "b", () => throw DynexNoValueException.BaseInstance);
         var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
 
         Assert.False(b.TryEval(out var _));
         Assert.False(sum.TryEval(out var _));
-        Assert.Throws<NoValueException>(() => sum.Eval());
+        Assert.Throws<DynexNoValueException>(() => sum.Eval());
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class BasicTests
         var b = new Dynex<float>(root / "b", () => 2);
 
         var sum = new RebindableDynex<float>(root / "sum");
-        Assert.Throws<NoValueException>(() => sum.Eval());
+        Assert.Throws<DynexNoValueException>(() => sum.Eval());
 
         sum.Rebind(3);
         Assert.Equal(3, sum.Eval());
@@ -65,8 +65,8 @@ public class BasicTests
     public void Nullable()
     {
         var root = Identifier.Root;
-        var a = new Dynex<float>(root / "a", () => throw new NoValueException(null));
-        var b = new Dynex<float>(root / "b", () => throw new NoValueException(null));
+        var a = new Dynex<float>(root / "a", () => throw DynexNoValueException.BaseInstance);
+        var b = new Dynex<float>(root / "b", () => throw DynexNoValueException.BaseInstance);
         var lt = new Dynex<bool>(root / "lt", () => a.Eval() < b.Eval());
         Assert.False(lt.TryEval(out var _));
     }

@@ -2,13 +2,6 @@ namespace Majex.Potok.Core;
 
 using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
-
-
-public class NoValueException(BaseDynex? offender) : Exception
-{
-    public BaseDynex? Offender = offender;
-}
-
 public class BaseDynex
 {
     protected readonly struct Snapshot(BaseDynexWeakRef dynex, uint revision)
@@ -138,20 +131,16 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     T _cachedValue = default!;
 
     /// <summary>
-    /// Provided that !_isDirty, denotes whether _cachedValue is a valid value.
+    /// If not null, denotes that we don't have a value (even if we're not dirty anymore)
+    /// but we have this exception instead.
     /// </summary>
-    /// <remarks>
-    /// Used to denote situations where the value cannot be provided.
-    /// Akin to null, but nullables don't play well with generics
-    /// (and expression evaluation in general).
-    /// </remarks>
-    bool _hasValue = false;
+    DynexException? _valueException = null;
 
     public bool TryEval(out T value)
     {
         ReportDependency();
         Recompute();
-        if (_hasValue)
+        if (_valueException == null)
         {
             value = _cachedValue;
             return true;
@@ -168,7 +157,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     {
         if (!TryEval(out var result))
         {
-            throw new NoValueException(this);
+            throw _valueException!;
         }
         return result;
     }
@@ -204,13 +193,13 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         _dynexBeingRecomputed.Value = new Snapshot(_weakThis, _revision);
         try
         {
-            _hasValue = false;
+            _valueException = null;
             _cachedValue = _evalFunc();
-            _hasValue = true;
         }
-        catch (NoValueException)
+        catch (DynexException e)
         {
-            // _hasValue stays false
+            _valueException = e.Clone();
+            _valueException.CallStack.Add(this);
         }
         finally
         {
