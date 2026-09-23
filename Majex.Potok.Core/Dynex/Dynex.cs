@@ -1,5 +1,6 @@
 namespace Majex.Potok.Core;
 
+using Microsoft.Extensions.Diagnostics.Tracing;
 using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
 public class BaseDynex
@@ -128,38 +129,65 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 {
     Func<T> _evalFunc = evalFunc;
 
-    T _cachedValue = default!;
+    readonly struct CachedValue : IEquatable<CachedValue>
+    {
+        readonly T Value = default!;
 
-    /// <summary>
-    /// If not null, denotes that we don't have a value (even if we're not dirty anymore)
-    /// but we have this exception instead.
-    /// </summary>
-    DynexException? _valueException = null;
+        /// <summary>
+        /// If not null, denotes that we don't have a value (even if we're not dirty anymore)
+        /// but we have this exception instead.
+        /// </summary>
+        readonly DynexException? Exception = DynexNoValueException.BaseInstance;
+
+        public CachedValue(T value)
+        {
+            Value = value;
+        }
+
+        public CachedValue(DynexException exception)
+        {
+            Exception = exception;
+        }
+
+        public bool TryGet(out T value)
+        {
+            value = Value;
+            return Exception == null;
+        }
+
+        public T Get()
+        {
+            if (Exception != null)
+            {
+                throw Exception;
+            }
+            else
+            {
+                return Value;
+            }
+        }
+
+        public bool Equals(CachedValue other)
+        {
+            return (Exception == other.Exception)
+            && EqualityComparer<T>.Default.Equals(Value, other.Value);
+        }
+    }
+
+    CachedValue _cachedValue = default;
 
     public bool TryEval(out T value)
     {
         ReportDependency();
         Recompute();
-        if (_valueException == null)
-        {
-            value = _cachedValue;
-            return true;
-        }
-        else
-        {
-            value = default!;
-            return false;
-        }
-
+        return _cachedValue.TryGet(out value);
     }
 
     public T Eval()
     {
-        if (!TryEval(out var result))
-        {
-            throw _valueException!;
-        }
-        return result;
+        ReportDependency();
+        Recompute();
+        return _cachedValue.Get();
     }
 
     /// <remarks>
@@ -186,20 +214,18 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             return;
         }
 
-        T prevValue = _cachedValue;
+        CachedValue prevValue = _cachedValue;
 
         _revision++;
         Snapshot? prevRecomputed = _dynexBeingRecomputed.Value;
         _dynexBeingRecomputed.Value = new Snapshot(_weakThis, _revision);
         try
         {
-            _valueException = null;
-            _cachedValue = _evalFunc();
+            _cachedValue = new CachedValue(_evalFunc());
         }
         catch (DynexException e)
         {
-            _valueException = e.Clone();
-            _valueException.CallStack.Add(this);
+            _cachedValue = new CachedValue(e.CloneAndAddCallStackItem(this));
         }
         finally
         {
@@ -212,7 +238,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         IDynexDebugger.Instance.Value?.OnRecompute(this);
 #endif
 
-        if (!EqualityComparer<T>.Default.Equals(prevValue, _cachedValue))
+        if (!_cachedValue.Equals(prevValue))
         {
             InvalidateDependants();
         }
