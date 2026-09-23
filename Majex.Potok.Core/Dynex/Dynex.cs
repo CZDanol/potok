@@ -1,6 +1,8 @@
 namespace Majex.Potok.Core;
 
-using DynexDependencyToken = WeakReference<BaseDynex?>;
+using BaseDynexWeakRef = WeakReference<BaseDynex>;
+
+
 
 public class NoValueException(BaseDynex? offender) : Exception
 {
@@ -9,7 +11,17 @@ public class NoValueException(BaseDynex? offender) : Exception
 
 public class BaseDynex
 {
-    static protected readonly ThreadLocal<DynexDependencyToken?> _dynexBeingRecomputed = new();
+    protected readonly struct Snapshot(BaseDynexWeakRef dynex, uint revision)
+    {
+        readonly BaseDynexWeakRef Dynex = dynex;
+        readonly uint Revision = revision;
+
+        public readonly BaseDynex? ResolveDynex()
+        {
+            return (Dynex.TryGetTarget(out var dynex) && dynex._revision == Revision) ? dynex : null;
+        }
+    }
+    static protected readonly ThreadLocal<Snapshot?> _dynexBeingRecomputed = new();
 
     protected readonly Identifier _id;
 
@@ -18,7 +30,7 @@ public class BaseDynex
     /// When this dynex changes value/state,
     /// they need to be invalidated.
     /// </summary>
-    protected List<DynexDependencyToken> _dependants = new();
+    protected List<Snapshot> _dependants = [];
 
     /// <summary>
     /// When _dependants grow to this size,
@@ -31,22 +43,17 @@ public class BaseDynex
     /// </summary>
     protected bool _isDirty = true;
 
-    /// <summary>
-    /// Weak reference to the current state of this dynex.
-    /// </summary>
+    protected BaseDynexWeakRef _weakThis;
+
     /// <remarks>
-    /// When the state changes (before every recompute),
-    /// it gets invalidated and a new token is generated.
-    /// 
-    /// Dependency tracking MUST be realized through this token,
-    /// otherwise things will break.
+    /// Changed at the beginning of every recompute.
     /// </remarks>
-    protected DynexDependencyToken _dependencyToken;
+    protected uint _revision = 0;
 
     protected BaseDynex(Identifier id)
     {
         _id = id;
-        _dependencyToken = new DynexDependencyToken(this);
+        _weakThis = new BaseDynexWeakRef(this);
     }
 
     /// <summary>
@@ -70,7 +77,7 @@ public class BaseDynex
             SweepDependants(false);
         }
 
-        _dependants.Add(dependant);
+        _dependants.Add(dependant.Value);
     }
 
     protected void Invalidate()
@@ -96,7 +103,8 @@ public class BaseDynex
         int i = 0;
         while (i < validCount)
         {
-            if (!_dependants[i].TryGetTarget(out var dependant))
+            BaseDynex? dependant = _dependants[i].ResolveDynex();
+            if (dependant == null)
             {
                 // Swap remove
                 _dependants[i] = _dependants[validCount - 1];
@@ -189,14 +197,13 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             return;
         }
 
-        var prevValue = _cachedValue;
-        var prevRecomputed = _dynexBeingRecomputed.Value;
+        T prevValue = _cachedValue;
+
+        _revision++;
+        Snapshot? prevRecomputed = _dynexBeingRecomputed.Value;
+        _dynexBeingRecomputed.Value = new Snapshot(_weakThis, _revision);
         try
         {
-            // Invalidate the old token and issue a new one
-            _dependencyToken.SetTarget(null);
-            _dependencyToken = new DynexDependencyToken(this);
-            _dynexBeingRecomputed.Value = _dependencyToken;
             _hasValue = false;
             _cachedValue = _evalFunc();
             _hasValue = true;
