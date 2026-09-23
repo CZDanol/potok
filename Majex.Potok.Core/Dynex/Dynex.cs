@@ -171,7 +171,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         bool IEquatable<CachedValue>.Equals(CachedValue other)
         {
             return EqualityComparer<T>.Default.Equals(Value, other.Value)
-                && Object.Equals(Exception, other.Exception);
+                && DynexException.ExceptionEquals(Exception, other.Exception);
         }
     }
 

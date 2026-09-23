@@ -1,6 +1,6 @@
 namespace Majex.Potok.Core;
 
-public abstract class DynexException : Exception, IEquatable<DynexException>
+public abstract class DynexException : Exception
 {
     public readonly List<BaseDynex> CallStack = [];
 
@@ -13,9 +13,21 @@ public abstract class DynexException : Exception, IEquatable<DynexException>
         return result;
     }
 
-    public virtual bool Equals(DynexException? other)
+    public static bool ExceptionEquals(DynexException? a, DynexException? b)
     {
-        return other != null && CallStack.Equals(other.CallStack);
+        if (a == b)
+        {
+            return true;
+        }
+        if (a == null || b == null)
+        {
+            return false;
+        }
+        return a.ExceptionEquals(b);
+    }
+    public virtual bool ExceptionEquals(DynexException? other)
+    {
+        return other != null && CallStack.SequenceEqual(other.CallStack);
     }
 
     protected DynexException() { }
@@ -39,8 +51,8 @@ public sealed class DynexNoValueException : DynexException
         return new DynexNoValueException(this);
     }
 
-    public override bool Equals(DynexException? other)
+    public override bool ExceptionEquals(DynexException? other)
     {
-        return base.Equals(other);
+        return base.ExceptionEquals(other);
     }
 }

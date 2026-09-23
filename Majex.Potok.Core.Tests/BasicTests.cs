@@ -96,4 +96,27 @@ public class BasicTests
         Assert.Equal(5, c.Eval());
         Assert.Equal([a, b], debugger.RecomputeLog);
     }
+
+    [Fact]
+    public void ExceptionEquality()
+    {
+        var root = Identifier.Root;
+        var a = new RebindableDynex<float>(root / "a", 3);
+        var b = new RebindableDynex<float>(root / "b", 4);
+
+        Assert.True(DynexException.ExceptionEquals(
+            new DynexNoValueException(),
+             new DynexNoValueException()
+             ));
+
+        Assert.True(DynexException.ExceptionEquals(
+            new DynexNoValueException().CloneAndAddCallStackItem(a),
+            new DynexNoValueException().CloneAndAddCallStackItem(a)
+        ));
+
+        Assert.False(DynexException.ExceptionEquals(
+            new DynexNoValueException().CloneAndAddCallStackItem(a),
+            new DynexNoValueException().CloneAndAddCallStackItem(b)
+        ));
+    }
 }
