@@ -2,19 +2,19 @@ namespace Majex.Potok.Core;
 
 public class RebindableDynex<T> : Dynex<T>
 {
-    public RebindableDynex(Identifier id) : base(id, static () => throw DynexNoValueException.BaseInstance)
+    public RebindableDynex(Identifier id) : base(id, _noValueFunc)
     {
 
     }
 
-    public RebindableDynex(Identifier id, T value) : base(id, () => value)
+    public RebindableDynex(Identifier id, T value) : base(id, _unreachabelFunc)
     {
-
+        SetValue(value);
     }
 
     public RebindableDynex(Identifier id, Func<T> evalFunc) : base(id, evalFunc)
     {
-
+        Rebind(evalFunc);
     }
 
     new public void Rebind(Func<T> evalFunc)
@@ -22,8 +22,8 @@ public class RebindableDynex<T> : Dynex<T>
         base.Rebind(evalFunc);
     }
 
-    public void Rebind(T value)
+    new public void SetValue(T value)
     {
-        Rebind(() => value);
+        base.SetValue(value);
     }
 }

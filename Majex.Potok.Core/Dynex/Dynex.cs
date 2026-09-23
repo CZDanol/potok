@@ -1,6 +1,6 @@
 namespace Majex.Potok.Core;
 
-using Microsoft.Extensions.Diagnostics.Tracing;
+using System.Diagnostics;
 using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
 public class BaseDynex
@@ -129,7 +129,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 {
     Func<T> _evalFunc = evalFunc;
 
-    readonly struct CachedValue : IEquatable<CachedValue>
+    readonly record struct CachedValue
     {
         readonly T Value = default!;
 
@@ -142,6 +142,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         public CachedValue(T value)
         {
             Value = value;
+            Exception = null;
         }
 
         public CachedValue(DynexException exception)
@@ -167,7 +168,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             }
         }
 
-        public bool Equals(CachedValue other)
+        bool IEquatable<CachedValue>.Equals(CachedValue other)
         {
             return (Exception == other.Exception)
             && EqualityComparer<T>.Default.Equals(Value, other.Value);
@@ -190,6 +191,9 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         return _cachedValue.Get();
     }
 
+    protected static readonly Func<T> _noValueFunc = () => throw DynexNoValueException.BaseInstance;
+    protected static readonly Func<T> _unreachabelFunc = () => throw new UnreachableException();
+
     /// <remarks>
     /// MUST stay private. Use RebindableDynex if you want rebinding.
     /// </remarks>
@@ -202,6 +206,28 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 
         _evalFunc = evalFunc;
         Invalidate();
+    }
+
+    protected void SetValue(T value)
+    {
+        var newValue = new CachedValue(value);
+        bool emitValueChange = (_cachedValue != newValue);
+
+        // Invalidate potential dependencies from previous state
+        _revision++;
+
+        // _evalFunc must never get called,
+        // there is no way for this dynex to get dirty,
+        // because it's just a static value with no dependencies.
+        _evalFunc = _unreachabelFunc;
+        _isDirty = false;
+
+        _cachedValue = newValue;
+
+        if (emitValueChange)
+        {
+            InvalidateDependants();
+        }
     }
 
     /// <summary>

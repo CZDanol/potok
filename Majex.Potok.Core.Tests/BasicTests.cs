@@ -41,7 +41,7 @@ public class BasicTests
         var sum = new RebindableDynex<float>(root / "sum");
         Assert.Throws<DynexNoValueException>(() => sum.Eval());
 
-        sum.Rebind(3);
+        sum.SetValue(3);
         Assert.Equal(3, sum.Eval());
 
         sum.Rebind(() => a.Eval() + b.Eval());
@@ -57,7 +57,7 @@ public class BasicTests
         var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
 
         Assert.Equal(7, sum.Eval());
-        b.Rebind(8);
+        b.SetValue(8);
         Assert.Equal(11, sum.Eval());
     }
 
@@ -92,7 +92,7 @@ public class BasicTests
         Assert.Equal([a, b, c], debugger.RecomputeLog);
         debugger.RecomputeLog.Clear();
 
-        a.Rebind(1);
+        a.SetValue(1);
         Assert.Equal(5, c.Eval());
         Assert.Equal([a, b], debugger.RecomputeLog);
     }
