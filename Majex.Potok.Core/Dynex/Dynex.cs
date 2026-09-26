@@ -271,7 +271,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         IDynexDebugger.Instance.Value?.OnRecompute(this);
 #endif
 
-        if (!_cachedValue.Equals(prevValue))
+        if (_cachedValue != prevValue)
         {
             InvalidateDependants();
         }
