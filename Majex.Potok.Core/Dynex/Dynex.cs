@@ -5,7 +5,7 @@ using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
 public class BaseDynex
 {
-    protected readonly struct Snapshot(BaseDynexWeakRef dynex, uint revision)
+    protected internal readonly struct Snapshot(BaseDynexWeakRef dynex, uint revision)
     {
         readonly BaseDynexWeakRef Dynex = dynex;
         readonly uint Revision = revision;
@@ -15,7 +15,6 @@ public class BaseDynex
             return (Dynex.TryGetTarget(out var dynex) && dynex._revision == Revision) ? dynex : null;
         }
     }
-    static protected readonly ThreadLocal<Snapshot?> _dynexBeingRecomputed = new();
 
     protected readonly Identifier _id;
 
@@ -60,7 +59,7 @@ public class BaseDynex
     /// </remarks>
     protected void ReportDependency()
     {
-        var dependant = _dynexBeingRecomputed.Value;
+        var dependant = _id.Flow.DynexBeingRecomputed;
         if (dependant == null)
         {
             return;
@@ -71,7 +70,7 @@ public class BaseDynex
             SweepDependants(false);
         }
 
-        _dependants.Add(dependant.Value);
+        _dependants.Add(new Snapshot(dependant._weakThis, dependant._revision));
     }
 
     protected void Invalidate()
@@ -250,8 +249,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         CachedValue prevValue = _cachedValue;
 
         _revision++;
-        Snapshot? prevRecomputed = _dynexBeingRecomputed.Value;
-        _dynexBeingRecomputed.Value = new Snapshot(_weakThis, _revision);
+        BaseDynex? prevRecomputed = _id.Flow.DynexBeingRecomputed;
+        _id.Flow.DynexBeingRecomputed = this;
         try
         {
             _cachedValue = new CachedValue(_evalFunc());
@@ -262,7 +261,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         }
         finally
         {
-            _dynexBeingRecomputed.Value = prevRecomputed;
+            _id.Flow.DynexBeingRecomputed = prevRecomputed;
         }
 
         _isDirty = false;

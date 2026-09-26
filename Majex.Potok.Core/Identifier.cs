@@ -2,24 +2,21 @@ namespace Majex.Potok.Core;
 
 public struct Identifier
 {
-    public static readonly Identifier Root = new();
-
     public static readonly char SegmentSeparator = '.';
+
+    public readonly DynexFlow Flow;
 
     readonly string[] _segments;
 
-    public Identifier()
+    public Identifier(DynexFlow flow)
     {
+        Flow = flow;
         _segments = [];
     }
 
-    public Identifier(string singleSegment)
+    private Identifier(DynexFlow flow, string[] segments)
     {
-        _segments = [singleSegment];
-    }
-
-    public Identifier(string[] segments)
-    {
+        Flow = flow;
         _segments = segments;
     }
 
@@ -33,6 +30,6 @@ public struct Identifier
         string[] resultSegments = new string[id._segments.Length + 1];
         id._segments.CopyTo(resultSegments);
         resultSegments[^1] = segment;
-        return new Identifier(resultSegments);
+        return new Identifier(id.Flow, resultSegments);
     }
 }

@@ -8,7 +8,8 @@ public class BasicTests
     [Fact]
     public void Sum()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new Dynex<float>(root / "a", () => 3);
         var b = new Dynex<float>(root / "b", () => 4);
         var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
@@ -21,7 +22,8 @@ public class BasicTests
     [Fact]
     public void NullSum()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new Dynex<float>(root / "a", () => 3);
         var b = new Dynex<float>(root / "b", () => throw DynexNoValueException.BaseInstance);
         var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
@@ -34,7 +36,8 @@ public class BasicTests
     [Fact]
     public void RebindTest()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new Dynex<float>(root / "a", () => 2);
         var b = new Dynex<float>(root / "b", () => 2);
 
@@ -51,7 +54,8 @@ public class BasicTests
     [Fact]
     public void RebindUpdateTest()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new RebindableDynex<float>(root / "b", 4);
         var sum = new Dynex<float>(root / "sum", () => a.Eval() + b.Eval());
@@ -64,7 +68,8 @@ public class BasicTests
     [Fact]
     public void Nullable()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new Dynex<float>(root / "a", () => throw DynexNoValueException.BaseInstance);
         var b = new Dynex<float>(root / "b", () => throw DynexNoValueException.BaseInstance);
         var lt = new Dynex<bool>(root / "lt", () => a.Eval() < b.Eval());
@@ -77,7 +82,8 @@ public class BasicTests
         var debugger = new DynexDebugger();
         IDynexDebugger.Instance.Value = debugger;
 
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new Dynex<float>(root / "b", () =>
         {
@@ -108,7 +114,8 @@ public class BasicTests
     [Fact]
     public void ExceptionEquality()
     {
-        var root = Identifier.Root;
+        var flow = new DynexFlow();
+        var root = flow.Root;
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new RebindableDynex<float>(root / "b", 4);
 
