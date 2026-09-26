@@ -2,14 +2,16 @@ namespace Majex.Potok.Core;
 
 public abstract class DynexException : Exception
 {
-    public readonly List<BaseDynex> CallStack = [];
+    readonly List<BaseDynex> _callStack = [];
+
+    public IReadOnlyList<BaseDynex> CallStack => _callStack;
 
     public abstract DynexException Clone();
 
     public DynexException CloneAndAddCallStackItem(BaseDynex item)
     {
         DynexException result = Clone();
-        result.CallStack.Add(item);
+        result._callStack.Add(item);
         return result;
     }
 
@@ -27,14 +29,14 @@ public abstract class DynexException : Exception
     }
     public virtual bool ExceptionEquals(DynexException? other)
     {
-        return other != null && GetType() == other.GetType() && CallStack.SequenceEqual(other.CallStack);
+        return other != null && GetType() == other.GetType() && _callStack.SequenceEqual(other._callStack);
     }
 
     protected DynexException() { }
 
     protected DynexException(DynexException other)
     {
-        CallStack = new List<BaseDynex>(other.CallStack);
+        _callStack = new List<BaseDynex>(other._callStack);
     }
 }
 
