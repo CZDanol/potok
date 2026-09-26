@@ -95,12 +95,12 @@ public class BasicTests
         Assert.Equal([], debugger.RecomputeLog);
 
         Assert.Equal(5, c.Eval());
-        Assert.Equal([a, b, c], debugger.RecomputeLog);
+        Assert.Equal([b, c], debugger.RecomputeLog);
         debugger.RecomputeLog.Clear();
 
         a.SetValue(1);
         Assert.Equal(5, c.Eval());
-        Assert.Equal([a, b], debugger.RecomputeLog);
+        Assert.Equal([b], debugger.RecomputeLog);
     }
 
     [Fact]

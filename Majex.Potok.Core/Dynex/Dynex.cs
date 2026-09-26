@@ -1,10 +1,13 @@
 namespace Majex.Potok.Core;
 
 using System.Diagnostics;
+using System.Reflection;
 using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
-public class BaseDynex
+public abstract class BaseDynex
 {
+    public DynexFlow Flow => _id.Flow;
+
     protected internal readonly struct Snapshot(BaseDynexWeakRef dynex, uint revision)
     {
         readonly BaseDynexWeakRef Dynex = dynex;
@@ -34,7 +37,7 @@ public class BaseDynex
     /// <summary>
     /// True if the dynex is not up-to-date and needs recomputation.
     /// </summary>
-    protected bool _isDirty = true;
+    protected bool _isDirty = false;
 
     protected BaseDynexWeakRef _weakThis;
 
@@ -47,30 +50,42 @@ public class BaseDynex
     {
         _id = id;
         _weakThis = new BaseDynexWeakRef(this);
+        Invalidate();
     }
 
     /// <summary>
-    /// Marks a dynex that is currently being recomputed (if any)
-    /// as dependent on this one.
+    /// Ensures that the value is not dirty.
     /// </summary>
-    /// <remarks>
-    /// To be called only in TryEval.
-    /// Used for detecting nested Eval() calls within the dynex evalFunc.
-    /// </remarks>
-    protected void ReportDependency()
+    internal protected abstract void Recompute();
+
+    protected void EvalImpl()
     {
-        var dependant = _id.Flow.DynexBeingRecomputed;
-        if (dependant == null)
+        var dependant = Flow.DynexBeingRecomputed;
+        if (dependant != null)
         {
-            return;
+            // Someone asked for a value of this dynex while recomputing dependant.
+
+            // Clean up the dependants list if it grew too much.
+            // Don't sweep every time, because the sweep has a linear complexity.          
+            if (_dependants.Count >= _dependantsSweepOn)
+            {
+                SweepDependants(false);
+            }
+
+            // DynexBeingRecomputed is dependent on this dynex
+            // -> add it to the dependants list.
+            _dependants.Add(new Snapshot(dependant._weakThis, dependant._revision));
+        }
+        else
+        {
+            // Someone asked for this dynexes value directly (outside of the recomputation tree).
+
+            // Recompute all dirty dynexes before giving the answer.
+            // Some of the dependencies or this dynex itself could be dirty.
+            Flow.Settle();
         }
 
-        if (_dependants.Count >= _dependantsSweepOn)
-        {
-            SweepDependants(false);
-        }
-
-        _dependants.Add(new Snapshot(dependant._weakThis, dependant._revision));
+        Debug.Assert(!_isDirty);
     }
 
     protected void Invalidate()
@@ -81,7 +96,7 @@ public class BaseDynex
         }
 
         _isDirty = true;
-        InvalidateDependants();
+        Flow.DirtyDynexes.Enqueue(this);
     }
 
     /// <summary>
@@ -185,15 +200,13 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 
     public bool TryEval(out T value)
     {
-        ReportDependency();
-        Recompute();
+        EvalImpl();
         return _cachedValue.TryGet(out value);
     }
 
     public T Eval()
     {
-        ReportDependency();
-        Recompute();
+        EvalImpl();
         return _cachedValue.Get();
     }
 
@@ -236,10 +249,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         }
     }
 
-    /// <summary>
-    /// Ensures that the value is not dirty.
-    /// </summary>
-    void Recompute()
+    internal protected override void Recompute()
     {
         if (!_isDirty)
         {
@@ -249,8 +259,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         CachedValue prevValue = _cachedValue;
 
         _revision++;
-        BaseDynex? prevRecomputed = _id.Flow.DynexBeingRecomputed;
-        _id.Flow.DynexBeingRecomputed = this;
+        BaseDynex? prevRecomputed = Flow.DynexBeingRecomputed;
+        Flow.DynexBeingRecomputed = this;
         try
         {
             _cachedValue = new CachedValue(_evalFunc());
@@ -261,7 +271,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         }
         finally
         {
-            _id.Flow.DynexBeingRecomputed = prevRecomputed;
+            Flow.DynexBeingRecomputed = prevRecomputed;
         }
 
         _isDirty = false;
