@@ -27,7 +27,7 @@ public abstract class DynexException : Exception
     }
     public virtual bool ExceptionEquals(DynexException? other)
     {
-        return other != null && CallStack.SequenceEqual(other.CallStack);
+        return other != null && GetType() == other.GetType() && CallStack.SequenceEqual(other.CallStack);
     }
 
     protected DynexException() { }
