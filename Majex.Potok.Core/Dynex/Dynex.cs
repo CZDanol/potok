@@ -199,7 +199,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     }
 
     protected static readonly Func<T> _noValueFunc = () => throw DynexNoValueException.BaseInstance;
-    protected static readonly Func<T> _unreachabelFunc = () => throw new UnreachableException();
+    protected static readonly Func<T> _unreachableFunc = () => throw new UnreachableException();
 
     /// <remarks>
     /// MUST stay private. Use RebindableDynex if you want rebinding.
@@ -226,7 +226,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         // _evalFunc must never get called,
         // there is no way for this dynex to get dirty,
         // because it's just a static value with no dependencies.
-        _evalFunc = _unreachabelFunc;
+        _evalFunc = _unreachableFunc;
         _isDirty = false;
 
         _cachedValue = newValue;

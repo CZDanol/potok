@@ -7,7 +7,7 @@ public class RebindableDynex<T> : Dynex<T>
 
     }
 
-    public RebindableDynex(Identifier id, T value) : base(id, _unreachabelFunc)
+    public RebindableDynex(Identifier id, T value) : base(id, _unreachableFunc)
     {
         SetValue(value);
     }
