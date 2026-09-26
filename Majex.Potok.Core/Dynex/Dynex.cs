@@ -75,6 +75,9 @@ public abstract class BaseDynex
             // DynexBeingRecomputed is dependent on this dynex
             // -> add it to the dependants list.
             _dependants.Add(new Snapshot(dependant._weakThis, dependant._revision));
+
+            // We need to provide some value, make sure we're not dirty.
+            Recompute();
         }
         else
         {
