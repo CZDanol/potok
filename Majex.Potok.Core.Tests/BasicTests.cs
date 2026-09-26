@@ -1,7 +1,6 @@
 ﻿namespace Majex.Potok.Core.Tests;
 
 using Majex.Potok.Core;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 public class BasicTests
 {

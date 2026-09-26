@@ -58,3 +58,37 @@ public sealed class DynexNoValueException : DynexException
         return base.ExceptionEquals(other);
     }
 }
+
+public sealed class DynexLoopException : DynexException
+{
+    public DynexLoopException() { }
+
+    public DynexLoopException(DynexLoopException other) : base(other) { }
+
+    public override DynexException Clone()
+    {
+        return new DynexLoopException(this);
+    }
+
+    public override bool ExceptionEquals(DynexException? other)
+    {
+        return base.ExceptionEquals(other);
+    }
+}
+
+public sealed class DynexFlowConvergenceException : DynexException
+{
+    public DynexFlowConvergenceException() { }
+
+    public DynexFlowConvergenceException(DynexFlowConvergenceException other) : base(other) { }
+
+    public override DynexException Clone()
+    {
+        return new DynexFlowConvergenceException(this);
+    }
+
+    public override bool ExceptionEquals(DynexException? other)
+    {
+        return base.ExceptionEquals(other);
+    }
+}

@@ -65,6 +65,11 @@ public abstract class BaseDynex
         {
             // Someone asked for a value of this dynex while recomputing dependant.
 
+            if (Flow.TopDynexBeingRecomputed == this)
+            {
+                throw new DynexLoopException();
+            }
+
             // Clean up the dependants list if it grew too much.
             // Don't sweep every time, because the sweep has a linear complexity.          
             if (_dependants.Count >= _dependantsSweepOn)
