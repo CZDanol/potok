@@ -129,7 +129,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 {
     Func<T> _evalFunc = evalFunc;
 
-    readonly record struct CachedValue
+    internal readonly record struct CachedValue
     {
         readonly T Value = default!;
 
@@ -138,6 +138,11 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         /// but we have this exception instead.
         /// </summary>
         readonly DynexException? Exception = DynexNoValueException.BaseInstance;
+
+        public CachedValue()
+        {
+
+        }
 
         public CachedValue(T value)
         {
@@ -168,14 +173,16 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             }
         }
 
-        bool IEquatable<CachedValue>.Equals(CachedValue other)
+        public bool Equals(CachedValue other)
         {
             return EqualityComparer<T>.Default.Equals(Value, other.Value)
                 && DynexException.ExceptionEquals(Exception, other.Exception);
         }
+
+        public override int GetHashCode() => throw new NotImplementedException();
     }
 
-    CachedValue _cachedValue = default;
+    CachedValue _cachedValue = new();
 
     public bool TryEval(out T value)
     {

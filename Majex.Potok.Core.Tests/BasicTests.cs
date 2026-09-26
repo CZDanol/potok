@@ -98,6 +98,14 @@ public class BasicTests
     }
 
     [Fact]
+    public void CachedValueDefaultConstructor()
+    {
+        Dynex<float>.CachedValue test = new Dynex<float>.CachedValue();
+        Assert.False(test.TryGet(out var _));
+        Assert.Throws<DynexNoValueException>(() => test.Get());
+    }
+
+    [Fact]
     public void ExceptionEquality()
     {
         var root = Identifier.Root;
