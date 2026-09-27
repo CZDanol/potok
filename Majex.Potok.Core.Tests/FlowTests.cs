@@ -5,15 +5,37 @@ using Majex.Potok.Core;
 public class FlowTests
 {
     [Fact]
-    public void DependencyLoop()
+    public void LoopException()
     {
         var flow = new DynexFlow();
         var root = flow.Root;
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new Dynex<float>(root / "b", () => a.Eval());
+
+        // preSettle = false -> a will not get recomputed before rebinding
+        // and thus will not have any value determined at all
+        a.Rebind(() => b.Eval(), preSettle: false);
+
+        // Neither a or b were ever evaluated and their value depends on each other
+        // that means that it's impossible to determine the value
+        Assert.Throws<DynexLoopException>(() => a.Eval());
+    }
+
+    [Fact]
+    public void LoopExceptionAvoidedWithPreSettle()
+    {
+        var flow = new DynexFlow();
+        var root = flow.Root;
+        var a = new RebindableDynex<float>(root / "a", 3);
+        var b = new Dynex<float>(root / "b", () => a.Eval());
+
+        // preSettle = true (default for Rebind), so a will get recomputed before rebinding
+        // that means that it will get a cached value of 3
         a.Rebind(() => b.Eval());
 
-        Assert.Throws<DynexLoopException>(() => a.Eval());
+        // We have a dependency loop here as well, but "b" was pre-settled on 3,
+        // so a will get settled on 3 as well and the flow stabilizes immediately.
+        Assert.Equal(3, a.Eval());
     }
 
     [Fact]
