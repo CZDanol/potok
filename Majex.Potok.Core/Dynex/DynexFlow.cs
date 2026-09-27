@@ -4,7 +4,11 @@ public class DynexFlow
 {
     public readonly Identifier Root;
 
-    public uint MaxSettlementIterations = 1024;
+    /// <summary>
+    /// How many times each dynex can be recomputed within a <see cref="Settle"/>
+    /// before the flow is deemed non-converging.
+    /// </summary>
+    public uint MaxDynexSettlementIterations = 16;
 
     internal BaseDynex? DynexBeingRecomputed = null;
 
@@ -16,6 +20,16 @@ public class DynexFlow
     /// (visited ~ (<see cref="RecomputeRunID"/> == <see cref="BaseDynex._lastRecomputeRunID"/>)).
     /// </remarks>
     internal uint RecomputeRunID = 0;
+
+    /// <summary>
+    /// A value that is different for each <see cref="Settle"/> call.
+    /// 0 is there is no <see cref="Settle"/> running. 
+    /// </summary>
+    internal uint SettleRunID => _settleRunID;
+
+    private uint _settleRunID = 0;
+
+    private uint _lastSettleRunID = 0;
 
     internal readonly Queue<BaseDynex> DirtyDynexes = new();
 
@@ -29,18 +43,22 @@ public class DynexFlow
     /// </summary>
     public void Settle()
     {
-        uint remainingIterations = MaxSettlementIterations;
-
-        while (DirtyDynexes.Count > 0)
+        try
         {
-            DirtyDynexes.Peek().Recompute();
+            _settleRunID = _lastSettleRunID + 1;
+            _lastSettleRunID = _settleRunID;
 
-            if (remainingIterations-- == 0)
+            while (DirtyDynexes.Count > 0)
             {
-                throw new DynexFlowConvergenceException();
-            }
+                DirtyDynexes.Peek().Recompute();
 
-            DirtyDynexes.Dequeue();
+                // Defer dequeue in case the Recompute throws
+                DirtyDynexes.Dequeue();
+            }
+        }
+        finally
+        {
+            _settleRunID = 0;
         }
     }
 

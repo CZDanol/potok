@@ -51,6 +51,10 @@ public abstract class BaseDynex
     /// </summary>
     protected uint _lastRecomputeRunID = 0;
 
+    protected uint _lastSettleRunID = 0;
+
+    protected uint _recomputeCountWithinSettleRun = 0;
+
     protected BaseDynex(Identifier id)
     {
         _id = id;
@@ -285,19 +289,37 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         _revision++;
         BaseDynex? prevRecomputed = Flow.DynexBeingRecomputed;
 
-        if (prevRecomputed == null)
+        // Recompute run logic
         {
-            // Flow.DynexBeingRecomputed is null -> this is a top-level recompute.
-            // That means that we're starting a new top-level recompute run.
-            Flow.RecomputeRunID++;
+            if (prevRecomputed == null)
+            {
+                // Flow.DynexBeingRecomputed is null -> this is a top-level recompute.
+                // That means that we're starting a new top-level recompute run.
+                Flow.RecomputeRunID++;
+            }
+            if (_lastRecomputeRunID == Flow.RecomputeRunID)
+            {
+                // This dynex has already been recomputed in this run.
+                // That means that there is a loop and we're not able to determine the value.
+                throw new DynexLoopException();
+            }
+            _lastRecomputeRunID = Flow.RecomputeRunID;
         }
-        if (_lastRecomputeRunID == Flow.RecomputeRunID)
+
+        // Settle run logic (if we're within <see cref="DynexFlow.Settle"/> )
+        if (Flow.SettleRunID != 0)
         {
-            // This dynex has already been recomputed in this run.
-            // That means that there is a loop and we're not able to determine the value.
-            throw new DynexLoopException();
+            if (_lastSettleRunID != Flow.SettleRunID)
+            {
+                _lastSettleRunID = Flow.SettleRunID;
+                _recomputeCountWithinSettleRun = 0;
+            }
+
+            if (++_recomputeCountWithinSettleRun == Flow.MaxDynexSettlementIterations)
+            {
+                throw new DynexFlowConvergenceException();
+            }
         }
-        _lastRecomputeRunID = Flow.RecomputeRunID;
 
         Flow.DynexBeingRecomputed = this;
         try
