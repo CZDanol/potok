@@ -133,4 +133,20 @@ public class BasicTests
             new DynexNoValueException().CloneAndAddCallStackItem(b)
         ));
     }
+
+    [Fact]
+    public void DiamondShape()
+    {
+        var flow = new DynexFlow();
+        var root = flow.Root;
+
+        var d = new Dynex<float>(root / "d", () => 5);
+
+        var b = new Dynex<float>(root / "b", () => d.Eval());
+        var c = new Dynex<float>(root / "c", () => d.Eval());
+
+        var a = new Dynex<float>(root / "a", () => b.Eval() + c.Eval());
+
+        Assert.Equal(10, a.Eval());
+    }
 }
