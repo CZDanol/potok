@@ -19,6 +19,22 @@ public class FlowTests
         // Neither a or b were ever evaluated and their value depends on each other
         // that means that it's impossible to determine the value
         Assert.Throws<DynexLoopException>(() => a.Eval());
+        Assert.Throws<DynexLoopException>(() => b.Eval());
+    }
+
+    [Fact]
+    public void HidenLoopException()
+    {
+        var flow = new DynexFlow();
+        var root = flow.Root;
+
+        var c = new RebindableDynex<float>(root / "c");
+        var a = new RebindableDynex<float>(root / "a", 3);
+        var b = new Dynex<float>(root / "b", () => a.Eval());
+
+        a.Rebind(() => b.Eval(), preSettle: false);
+        c.Rebind(() => b.Eval(), preSettle: false);
+        Assert.Throws<DynexLoopException>(() => c.Eval());
     }
 
     [Fact]

@@ -8,7 +8,14 @@ public class DynexFlow
 
     internal BaseDynex? DynexBeingRecomputed = null;
 
-    internal BaseDynex? TopDynexBeingRecomputed = null;
+    /// <summary>
+    /// A value that is different for each top-level <see cref="BaseDynex.Recompute"/> call.
+    /// </summary>
+    /// <remarks>
+    /// Used to identify dependency loops, akin to DFS coloring concept
+    /// (visited ~ (<see cref="RecomputeRunID"/> == <see cref="BaseDynex._lastRecomputeRunID"/>)).
+    /// </remarks>
+    internal uint RecomputeRunID = 0;
 
     internal readonly Queue<BaseDynex> DirtyDynexes = new();
 
@@ -26,17 +33,15 @@ public class DynexFlow
 
         while (DirtyDynexes.Count > 0)
         {
-            BaseDynex dynex = DirtyDynexes.Dequeue();
-            TopDynexBeingRecomputed = dynex;
-            dynex.Recompute();
+            DirtyDynexes.Peek().Recompute();
 
             if (remainingIterations-- == 0)
             {
                 throw new DynexFlowConvergenceException();
             }
-        }
 
-        TopDynexBeingRecomputed = null;
+            DirtyDynexes.Dequeue();
+        }
     }
 
 }

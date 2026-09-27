@@ -29,7 +29,7 @@ public abstract class BaseDynex
     protected List<Snapshot> _dependants = [];
 
     /// <summary>
-    /// When _dependants grow to this size,
+    /// When <see cref="_dependants"/>  grow to this size,
     /// do a sweep that removes null values.
     /// </summary>
     private int _dependantsSweepOn = 16;
@@ -45,6 +45,11 @@ public abstract class BaseDynex
     /// Changed at the beginning of every recompute.
     /// </remarks>
     protected uint _revision = 0;
+
+    /// <summary>
+    /// Last <see cref="DynexFlow.RecomputeRunID"/> this flow was recomputed on.
+    /// </summary>
+    protected uint _lastRecomputeRunID = 0;
 
     protected BaseDynex(Identifier id)
     {
@@ -64,11 +69,6 @@ public abstract class BaseDynex
         if (dependant != null)
         {
             // Someone asked for a value of this dynex while recomputing dependant.
-
-            if (Flow.TopDynexBeingRecomputed == this)
-            {
-                throw new DynexLoopException();
-            }
 
             // Clean up the dependants list if it grew too much.
             // Don't sweep every time, because the sweep has a linear complexity.          
@@ -108,7 +108,7 @@ public abstract class BaseDynex
     }
 
     /// <summary>
-    /// Removes null references from the _dependants list to shrink its size.
+    /// Removes null references from the <see cref="_dependants"/> list to shrink its size.
     /// </summary>
     /// <param name="invalidate">If true, also invalidates all dependants.</param>
     protected void SweepDependants(bool invalidate)
@@ -284,6 +284,21 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 
         _revision++;
         BaseDynex? prevRecomputed = Flow.DynexBeingRecomputed;
+
+        if (prevRecomputed == null)
+        {
+            // Flow.DynexBeingRecomputed is null -> this is a top-level recompute.
+            // That means that we're starting a new top-level recompute run.
+            Flow.RecomputeRunID++;
+        }
+        if (_lastRecomputeRunID == Flow.RecomputeRunID)
+        {
+            // This dynex has already been recomputed in this run.
+            // That means that there is a loop and we're not able to determine the value.
+            throw new DynexLoopException();
+        }
+        _lastRecomputeRunID = Flow.RecomputeRunID;
+
         Flow.DynexBeingRecomputed = this;
         try
         {
