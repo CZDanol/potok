@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Majex.Potok.Core;
 
 public class DynexFlow
@@ -27,6 +29,8 @@ public class DynexFlow
     /// </summary>
     internal uint SettleRunID => _settleRunID;
 
+    public bool IsSettling => _settleRunID != 0;
+
     private uint _settleRunID = 0;
 
     private uint _lastSettleRunID = 0;
@@ -43,6 +47,11 @@ public class DynexFlow
     /// </summary>
     public void Settle()
     {
+        if (IsSettling)
+        {
+            throw new Exception("DynexFlow.Settle nesting");
+        }
+
         try
         {
             _settleRunID = _lastSettleRunID + 1;
