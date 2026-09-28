@@ -38,7 +38,7 @@ public class FlowTests
     }
 
     [Fact]
-    public void HidenLoopException()
+    public void HiddenLoopException()
     {
         var flow = new DynexFlow();
         var root = flow.Root;

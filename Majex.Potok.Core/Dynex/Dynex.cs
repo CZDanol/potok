@@ -294,7 +294,7 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
                 _recomputeCountWithinSettleRun = 0;
             }
 
-            if (++_recomputeCountWithinSettleRun == Flow.MaxDynexSettlementIterations)
+            if (++_recomputeCountWithinSettleRun >= Flow.MaxDynexSettlementIterations)
             {
                 return new CachedValue(new DynexFlowConvergenceException());
             }
