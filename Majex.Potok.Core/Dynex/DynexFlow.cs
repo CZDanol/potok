@@ -49,7 +49,7 @@ public class DynexFlow
     {
         if (IsSettling)
         {
-            throw new Exception("DynexFlow.Settle nesting");
+            throw new InvalidOperationException("DynexFlow.Settle nesting");
         }
 
         try
