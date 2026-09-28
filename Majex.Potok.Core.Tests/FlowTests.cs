@@ -110,5 +110,6 @@ public class FlowTests
         a.Rebind(() => c.Eval() + 1);
 
         Assert.Throws<DynexFlowConvergenceException>(() => c.Eval());
+        Assert.False(c.TryEval(out var _));
     }
 }

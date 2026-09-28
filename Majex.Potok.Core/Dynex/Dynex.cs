@@ -283,13 +283,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
         }
     }
 
-    internal protected override void Recompute()
+    private CachedValue RecomputeImpl()
     {
-        if (!_isDirty)
-        {
-            return;
-        }
-
         // Settle run logic (if we're within <see cref="DynexFlow.Settle"/> )
         if (Flow.SettleRunID != 0)
         {
@@ -301,26 +296,21 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
 
             if (++_recomputeCountWithinSettleRun == Flow.MaxDynexSettlementIterations)
             {
-                throw new DynexFlowConvergenceException();
+                return new CachedValue(new DynexFlowConvergenceException());
             }
         }
 
-        CachedValue prevValue = _cachedValue;
         try
         {
             Flow.RecomputingDynexesStack.Push(this);
             _isRecomputing = true;
-
-            _revision++;
-            _isDirty = false;
-
-            _cachedValue = new CachedValue(_evalFunc());
+            return new CachedValue(_evalFunc());
         }
         catch (DynexException e)
         {
-            _cachedValue = new CachedValue(e.CloneAndAddCallStackItem(this));
             // A DynexException exception is still considered a known and well defined state
             // -> we're not dirty, we're clean, Get() will throw the stored exception
+            return new CachedValue(e.CloneAndAddCallStackItem(this));
         }
         catch (Exception)
         {
@@ -336,6 +326,20 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             var popped = Flow.RecomputingDynexesStack.Pop();
             Debug.Assert(popped == this);
         }
+    }
+
+    internal protected override void Recompute()
+    {
+        if (!_isDirty)
+        {
+            return;
+        }
+
+        CachedValue prevValue = _cachedValue;
+
+        _revision++;
+        _isDirty = false;
+        _cachedValue = RecomputeImpl();
 
 #if DEBUG
         IDynexDebugger.Instance.Value?.OnRecompute(this);
