@@ -26,6 +26,18 @@ public class FlowTests
     }
 
     [Fact]
+    public void DirectLoopException()
+    {
+        var flow = new DynexFlow();
+        var root = flow.Root;
+        var a = new RebindableDynex<float>(root / "a", 3);
+        a.Rebind(() => a.Eval());
+
+        Assert.Throws<DynexLoopException>(() => a.Eval());
+        Assert.False(a.TryEval(out var _));
+    }
+
+    [Fact]
     public void HidenLoopException()
     {
         var flow = new DynexFlow();
