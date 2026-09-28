@@ -9,21 +9,21 @@ public class RebindableDynex<T> : Dynex<T>
 
     public RebindableDynex(Identifier id, T value) : base(id, _unreachableFunc)
     {
-        SetValue(value, preSettle: false);
+        SetValue(value);
     }
 
     public RebindableDynex(Identifier id, Func<T> evalFunc) : base(id, evalFunc)
     {
-        Rebind(evalFunc, preSettle: false);
+        Rebind(evalFunc);
     }
 
-    new public void Rebind(Func<T> evalFunc, bool preSettle = true)
+    new public void Rebind(Func<T> evalFunc)
     {
-        base.Rebind(evalFunc, preSettle);
+        base.Rebind(evalFunc);
     }
 
-    new public void SetValue(T value, bool preSettle = true)
+    new public void SetValue(T value)
     {
-        base.SetValue(value, preSettle);
+        base.SetValue(value);
     }
 }

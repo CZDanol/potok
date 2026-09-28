@@ -12,9 +12,9 @@ public class FlowTests
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new Dynex<float>(root / "b", () => a.Eval());
 
-        // preSettle = false -> a will not get recomputed before rebinding
+        // a will not get recomputed before rebinding
         // and thus will not have any value determined at all
-        a.Rebind(() => b.Eval(), preSettle: false);
+        a.Rebind(() => b.Eval());
 
         // Neither a or b were ever evaluated and their value depends on each other
         // that means that it's impossible to determine the value
@@ -32,8 +32,8 @@ public class FlowTests
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new Dynex<float>(root / "b", () => a.Eval());
 
-        a.Rebind(() => b.Eval(), preSettle: false);
-        c.Rebind(() => b.Eval(), preSettle: false);
+        a.Rebind(() => b.Eval());
+        c.Rebind(() => b.Eval());
         Assert.Throws<DynexLoopException>(() => c.Eval());
     }
 
@@ -45,8 +45,10 @@ public class FlowTests
         var a = new RebindableDynex<float>(root / "a", 3);
         var b = new Dynex<float>(root / "b", () => a.Eval());
 
-        // preSettle = true (default for Rebind), so a will get recomputed before rebinding
+        // a will get recomputed before rebinding
         // that means that it will get a cached value of 3
+        flow.Settle();
+
         a.Rebind(() => b.Eval());
 
         // We have a dependency loop here as well, but "b" was pre-settled on 3,

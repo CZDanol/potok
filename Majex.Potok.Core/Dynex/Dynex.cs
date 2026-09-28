@@ -228,17 +228,11 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     /// <remarks>
     /// MUST stay private. Use RebindableDynex if you want rebinding.
     /// </remarks>
-    /// <param name="preSettle">Settle the flow before rebinding.</param>
-    protected void Rebind(Func<T> evalFunc, bool preSettle = true)
+    protected void Rebind(Func<T> evalFunc)
     {
         if (_evalFunc == evalFunc)
         {
             return;
-        }
-
-        if (preSettle)
-        {
-            Flow.Settle();
         }
 
         _evalFunc = evalFunc;
@@ -249,14 +243,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     /// 
     /// </summary>
     /// <param name="value"></param>
-    /// <param name="preSettle">Settle the flow before rebinding.</param>
-    protected void SetValue(T value, bool preSettle = true)
+    protected void SetValue(T value)
     {
-        if (preSettle)
-        {
-            Flow.Settle();
-        }
-
         var newValue = new CachedValue(value);
         bool emitValueChange = (_cachedValue != newValue);
 
