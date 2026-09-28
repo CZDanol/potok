@@ -6,14 +6,7 @@ public abstract class DynexException : Exception
 
     public IReadOnlyList<BaseDynex> CallStack => _callStack;
 
-    public abstract DynexException Clone();
-
-    public DynexException CloneAndAddCallStackItem(BaseDynex item)
-    {
-        DynexException result = Clone();
-        result._callStack.Add(item);
-        return result;
-    }
+    public abstract DynexException CloneAndAddCallStackItem(BaseDynex item);
 
     public static bool ExceptionEquals(DynexException? a, DynexException? b)
     {
@@ -34,9 +27,22 @@ public abstract class DynexException : Exception
 
     protected DynexException() { }
 
-    protected DynexException(DynexException other)
+    protected DynexException(DynexException other, BaseDynex addStackItem)
     {
-        _callStack = new List<BaseDynex>(other._callStack);
+        _callStack.EnsureCapacity(other._callStack.Count + 1);
+        foreach (var item in other._callStack)
+        {
+            _callStack.Add(item);
+
+            // Prevent loop accumulation in the call stack
+            // Note: bottommost stack items are first in the list
+            if (item == addStackItem)
+            {
+                _callStack.Clear();
+            }
+        }
+
+        _callStack.Add(addStackItem);
     }
 }
 
@@ -46,11 +52,12 @@ public sealed class DynexNoValueException : DynexException
 
     public DynexNoValueException() { }
 
-    public DynexNoValueException(DynexNoValueException other) : base(other) { }
+    public DynexNoValueException(DynexNoValueException other, BaseDynex addStackItem)
+     : base(other, addStackItem) { }
 
-    public override DynexException Clone()
+    public override DynexException CloneAndAddCallStackItem(BaseDynex item)
     {
-        return new DynexNoValueException(this);
+        return new DynexNoValueException(this, item);
     }
 
     public override bool ExceptionEquals(DynexException? other)
@@ -61,18 +68,30 @@ public sealed class DynexNoValueException : DynexException
 
 public sealed class DynexLoopException : DynexException
 {
-    public DynexLoopException() { }
+    private List<BaseDynex> _loop = new();
 
-    public DynexLoopException(DynexLoopException other) : base(other) { }
+    public IReadOnlyList<BaseDynex> Loop => _loop;
 
-    public override DynexException Clone()
+    public DynexLoopException(List<BaseDynex> loop)
     {
-        return new DynexLoopException(this);
+        _loop = loop;
+    }
+
+    public DynexLoopException(DynexLoopException other, BaseDynex addStackItem)
+     : base(other, addStackItem)
+    {
+        _loop = other._loop;
+    }
+
+    public override DynexException CloneAndAddCallStackItem(BaseDynex item)
+    {
+        return new DynexLoopException(this, item);
     }
 
     public override bool ExceptionEquals(DynexException? other)
     {
-        return base.ExceptionEquals(other);
+        return base.ExceptionEquals(other)
+            && _loop.SequenceEqual(((DynexLoopException)other!)._loop);
     }
 }
 
@@ -80,11 +99,12 @@ public sealed class DynexFlowConvergenceException : DynexException
 {
     public DynexFlowConvergenceException() { }
 
-    public DynexFlowConvergenceException(DynexFlowConvergenceException other) : base(other) { }
+    public DynexFlowConvergenceException(DynexFlowConvergenceException other, BaseDynex addStackItem)
+     : base(other, addStackItem) { }
 
-    public override DynexException Clone()
+    public override DynexException CloneAndAddCallStackItem(BaseDynex item)
     {
-        return new DynexFlowConvergenceException(this);
+        return new DynexFlowConvergenceException(this, item);
     }
 
     public override bool ExceptionEquals(DynexException? other)

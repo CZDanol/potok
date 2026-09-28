@@ -1,7 +1,6 @@
 namespace Majex.Potok.Core;
 
 using System.Diagnostics;
-using System.Reflection;
 using BaseDynexWeakRef = WeakReference<BaseDynex>;
 
 public abstract class BaseDynex
@@ -39,17 +38,14 @@ public abstract class BaseDynex
     /// </summary>
     protected bool _isDirty = false;
 
+    protected bool _isRecomputing = false;
+
     protected BaseDynexWeakRef _weakThis;
 
     /// <remarks>
     /// Changed at the beginning of every recompute.
     /// </remarks>
     protected uint _revision = 0;
-
-    /// <summary>
-    /// Last <see cref="DynexFlow.RecomputeRunID"/> this flow was recomputed on.
-    /// </summary>
-    protected uint _lastRecomputeRunID = 0;
 
     protected uint _lastSettleRunID = 0;
 
@@ -69,10 +65,9 @@ public abstract class BaseDynex
 
     protected void EvalImpl()
     {
-        var dependant = Flow.DynexBeingRecomputed;
-        if (dependant != null)
+        if (Flow.RecomputingDynexesStack.Count > 0)
         {
-            // Someone asked for a value of this dynex while recomputing dependant.
+            // Someone asked for a value of this dynex while recomputing dependant.            
 
             // Clean up the dependants list if it grew too much.
             // Don't sweep every time, because the sweep has a linear complexity.          
@@ -83,10 +78,29 @@ public abstract class BaseDynex
 
             // DynexBeingRecomputed is dependent on this dynex
             // -> add it to the dependants list.
+            var dependant = Flow.RecomputingDynexesStack.Peek();
             _dependants.Add(new Snapshot(dependant._weakThis, dependant._revision));
+
+            // Check for loops - but only after reporting the dependants
+            if (_isRecomputing)
+            {
+                List<BaseDynex> loop = new();
+                foreach (var item in Flow.RecomputingDynexesStack)
+                {
+                    loop.Add(item);
+                    if (item == this)
+                    {
+                        break;
+                    }
+                }
+                throw new DynexLoopException(loop);
+            }
 
             // We need to provide some value, make sure we're not dirty.
             Recompute();
+
+            // We can actually end up dirty again after recompute
+            // Debug.Assert(!_isDirty);
         }
         else
         {
@@ -95,9 +109,9 @@ public abstract class BaseDynex
             // Recompute all dirty dynexes before giving the answer.
             // Some of the dependencies or this dynex itself could be dirty.
             Flow.Settle();
-        }
 
-        Debug.Assert(!_isDirty);
+            Debug.Assert(!_isDirty);
+        }
     }
 
     protected void Invalidate()
@@ -230,6 +244,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     /// </remarks>
     protected void Rebind(Func<T> evalFunc)
     {
+        Debug.Assert(!_isRecomputing);
+
         if (_evalFunc == evalFunc)
         {
             return;
@@ -245,6 +261,8 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
     /// <param name="value"></param>
     protected void SetValue(T value)
     {
+        Debug.Assert(!_isRecomputing);
+
         var newValue = new CachedValue(value);
         bool emitValueChange = (_cachedValue != newValue);
 
@@ -272,28 +290,6 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             return;
         }
 
-        CachedValue prevValue = _cachedValue;
-
-        _revision++;
-        BaseDynex? prevRecomputed = Flow.DynexBeingRecomputed;
-
-        // Recompute run logic
-        {
-            if (prevRecomputed == null)
-            {
-                // Flow.DynexBeingRecomputed is null -> this is a top-level recompute.
-                // That means that we're starting a new top-level recompute run.
-                Flow.RecomputeRunID++;
-            }
-            if (_lastRecomputeRunID == Flow.RecomputeRunID)
-            {
-                // This dynex has already been recomputed in this run.
-                // That means that there is a loop and we're not able to determine the value.
-                throw new DynexLoopException();
-            }
-            _lastRecomputeRunID = Flow.RecomputeRunID;
-        }
-
         // Settle run logic (if we're within <see cref="DynexFlow.Settle"/> )
         if (Flow.SettleRunID != 0)
         {
@@ -309,21 +305,37 @@ public class Dynex<T>(Identifier id, Func<T> evalFunc) : BaseDynex(id)
             }
         }
 
-        Flow.DynexBeingRecomputed = this;
+        CachedValue prevValue = _cachedValue;
         try
         {
+            Flow.RecomputingDynexesStack.Push(this);
+            _isRecomputing = true;
+
+            _revision++;
+            _isDirty = false;
+
             _cachedValue = new CachedValue(_evalFunc());
         }
         catch (DynexException e)
         {
             _cachedValue = new CachedValue(e.CloneAndAddCallStackItem(this));
+            // A DynexException exception is still considered a known and well defined state
+            // -> we're not dirty, we're clean, Get() will throw the stored exception
+        }
+        catch (Exception)
+        {
+            // Uknown exception from outside of our control
+            // it might be repeatable, it might not, we don't know
+            // the dynex should stay in the dirty state
+            _isDirty = true;
+            throw;
         }
         finally
         {
-            Flow.DynexBeingRecomputed = prevRecomputed;
+            _isRecomputing = false;
+            var popped = Flow.RecomputingDynexesStack.Pop();
+            Debug.Assert(popped == this);
         }
-
-        _isDirty = false;
 
 #if DEBUG
         IDynexDebugger.Instance.Value?.OnRecompute(this);

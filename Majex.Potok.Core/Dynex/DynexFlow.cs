@@ -12,16 +12,7 @@ public class DynexFlow
     /// </summary>
     public uint MaxDynexSettlementIterations = 16;
 
-    internal BaseDynex? DynexBeingRecomputed = null;
-
-    /// <summary>
-    /// A value that is different for each top-level <see cref="BaseDynex.Recompute"/> call.
-    /// </summary>
-    /// <remarks>
-    /// Used to identify dependency loops, akin to DFS coloring concept
-    /// (visited ~ (<see cref="RecomputeRunID"/> == <see cref="BaseDynex._lastRecomputeRunID"/>)).
-    /// </remarks>
-    internal uint RecomputeRunID = 0;
+    internal Stack<BaseDynex> RecomputingDynexesStack = new();
 
     /// <summary>
     /// A value that is different for each <see cref="Settle"/> call.
